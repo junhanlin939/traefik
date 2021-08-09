@@ -1,0 +1,78 @@
+version: "3.7"
+
+services:
+  traefik:
+    image: "traefik:v2.4"
+    container_name: "traefik"
+    hostname: "traefik"
+    env_file:
+      - ".env"
+    ports:
+      - "9080:80"
+      - "8080:8080"
+      - "8443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/srv/docker/traefik/traefik.yml:/traefik.yml:ro"
+      - "/srv/docker/traefik/acme.json:/acme.json"
+      - "./account.json:/account.json"
+      - "/etc/localtime:/etc/localtime:ro"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.tls.certresolver=lets-encr"
+      - "traefik.http.routers.traefik.tls.domains[0].main=*.$MY_DOMAIN"
+      - "traefik.http.routers.traefik.tls.domains[0].sans=$MY_DOMAIN"
+
+  whoami:
+    image: "containous/whoami"
+    container_name: "whoami"
+    hostname: "whoami"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.$MY_DOMAIN`)"
+      - "traefik.http.routers.whoami.tls.certresolver=lets-encr"
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx-249
+    hostname: nginx
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nginx.entrypoints=websecure"
+      - "traefik.http.routers.nginx.rule=Host(`nginx.$MY_DOMAIN`)"
+      - "traefik.http.routers.nginx.tls.certresolver=lets-encr"
+
+  apache:
+    image: httpd:latest
+    container_name: apache
+    hostname: apache
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.apache.entrypoints=websecure"
+      - "traefik.http.routers.apache.rule=Host(`apache.$MY_DOMAIN`)"
+      - "traefik.http.routers.apache.tls.certresolver=lets-encr"
+
+
+  portainer:
+    image: portainer/portainer
+    container_name: portainer
+    hostname: portainer
+    ports:
+      - "7080:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.$MY_DOMAIN`)"
+      - "traefik.http.routers.portainer.tls.certresolver=lets-encr"
+
+networks:
+  default:
+    external:
+      name: $DEFAULT_NETWORK
+      
+volumes:
+  portainer_data:

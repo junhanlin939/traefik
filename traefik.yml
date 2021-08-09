@@ -1,0 +1,61 @@
+## STATIC CONFIGURATION
+log:
+  level: INFO
+
+api:
+  insecure: true
+  dashboard: true
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+  file:
+    filename: "traefik.yml"
+
+certificatesResolvers:
+  lets-encr:
+    acme:
+      #caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      storage: /acme.json
+      email: gary@myre.life
+      dnsChallenge:
+        provider: gcloud
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
+## DYNAMIC CONFIGURATION
+http:
+  routers:
+    http-route-to-local-ip:
+      rule: "Host(`nginx.myre.life`)"
+      service: http-route-to-local-ip-service
+      priority: 1000
+      entryPoints:
+        - web
+    https-route-to-local-ip:
+      rule: "Host(`nginx.myre.life`)"
+      service: https-route-to-local-ip-service
+      priority: 1000
+      entryPoints:
+        - websecure
+      tls: {}
+
+  services:
+    http-route-to-local-ip-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.11.250:8081"
+    https-route-to-local-ip-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.11.250:8081"
+
